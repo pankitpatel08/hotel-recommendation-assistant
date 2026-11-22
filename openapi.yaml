@@ -1,0 +1,158 @@
+openapi: 3.1.0
+info:
+  title: Hotel Recommendations API (fixture demo)
+  version: 0.1.0
+  description: |
+    Local demo API for the hotel recommendation assessment.
+    Responses are deterministic fixture data. No natural-language
+    interpretation is performed: `message` is only validated, and the
+    `scenario` field is a demo control that selects the response.
+servers:
+  - url: http://localhost:8000
+    description: Local development
+paths:
+  /recommendations:
+    post:
+      operationId: createRecommendations
+      summary: Get fixture hotel recommendations
+      description: |
+         Validates the request, then returns a canned outcome chosen by
+        `scenario`.
+
+        Order of evaluation:
+        1. Request validation. Failures return 422 regardless of scenario.
+        2. Scenario behaviour.
+
+        Scenario behaviour:
+        - `success`: waits ~800 ms, then returns 200 with all three fixture hotels.
+        - `empty`: waits ~800 ms, then returns 200 with an empty `hotels` array.
+        - `error`: waits ~800 ms, then returns 503 with a user-readable message.
+
+        The artificial delay exists so the loading state is observable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendationRequest"
+            examples:
+              success:
+                value:
+                  message: "Find a Wellington hotel for two nights, up to NZD 250 per night; breakfast preferred."
+                  scenario: success
+      responses:
+        "200":
+          description: Assistant message and zero or more hotels (scenario `success` or `empty`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationResponse"
+              examples:
+                success:
+                  summary: scenario=success (all three fixtures)
+                  value:
+                    message: "Demo fixture data: here are three Wellington hotels."
+                    hotels:
+                      - id: h1
+                        name: Harbour House
+                        nightlyPrice: 220
+                        currency: NZD
+                        breakfastIncluded: true
+                        explanation: "Within budget; breakfast included."
+                      - id: h2
+                        name: City Garden
+                        nightlyPrice: 245
+                        currency: NZD
+                        breakfastIncluded: true
+                        explanation: "Near the meeting district."
+                      - id: h3
+                        name: Quay Rooms
+                        nightlyPrice: 195
+                        currency: NZD
+                        breakfastIncluded: false
+                        explanation: "Lower price; breakfast costs extra."
+                empty:
+                  summary: scenario=empty
+                  value:
+                    message: "Demo fixture data: no hotels matched this request."
+                    hotels: []
+        "422":
+          description: Validation failed (missing or blank message, unknown scenario, malformed JSON).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: validation_error
+                message: "Message must not be empty."
+        "503":
+          description: Simulated recoverable upstream failure (scenario `error`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: service_unavailable
+                message: "The recommendation service is temporarily unavailable. Please try again."
+components:
+  schemas:
+    Scenario:
+      type: string
+      enum: [success, empty, error]
+      default: success
+      description: Demo control that selects the fixture response. Not part of a real product contract.
+    RecommendationRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          minLength: 1
+          pattern: '\S'
+          description: Free-text hotel request. Must contain at least one non-whitespace character. It is not interpreted.
+          examples:
+            - "Find a Wellington hotel for two nights, up to NZD 250 per night; breakfast preferred."
+        scenario:
+          $ref: "#/components/schemas/Scenario"
+    Hotel:
+      type: object
+      required:
+        [id, name, nightlyPrice, currency, breakfastIncluded, explanation]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        nightlyPrice:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          description: ISO 4217 code.
+        breakfastIncluded:
+          type: boolean
+        explanation:
+          type: string
+    RecommendationResponse:
+      type: object
+      required: [message, hotels]
+      properties:
+        message:
+          type: string
+          description: Assistant message. Labelled as fixture data.
+        hotels:
+          type: array
+          items:
+            $ref: "#/components/schemas/Hotel"
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [validation_error, service_unavailable]
+        message:
+          type: string
+          minLength: 1
+          description: Human-readable explanation.
