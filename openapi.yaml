@@ -2,11 +2,7 @@ openapi: 3.1.0
 info:
   title: Hotel Recommendations API (fixture demo)
   version: 0.1.0
-  description: |
-    Local demo API for the hotel recommendation assessment.
-    Responses are deterministic fixture data. No natural-language
-    interpretation is performed: `message` is only validated, and the
-    `scenario` field is a demo control that selects the response.
+  description: "Local demo API for the hotel recommendation assessment. Responses are deterministic fixture data. No natural-language interpretation is performed: `message` is only validated, and the `scenario` field is a demo control that selects the response."
 servers:
   - url: http://localhost:8000
     description: Local development
@@ -15,20 +11,7 @@ paths:
     post:
       operationId: createRecommendations
       summary: Get fixture hotel recommendations
-      description: |
-         Validates the request, then returns a canned outcome chosen by
-        `scenario`.
-
-        Order of evaluation:
-        1. Request validation. Failures return 422 regardless of scenario.
-        2. Scenario behaviour.
-
-        Scenario behaviour:
-        - `success`: waits ~800 ms, then returns 200 with all three fixture hotels.
-        - `empty`: waits ~800 ms, then returns 200 with an empty `hotels` array.
-        - `error`: waits ~800 ms, then returns 503 with a user-readable message.
-
-        The artificial delay exists so the loading state is observable.
+      description: "Validation runs before scenario handling, so an invalid message returns 422 even when `scenario` is `error`. A short delay (FIXTURE_DELAY_MS, default 800) is applied to valid requests."
       requestBody:
         required: true
         content:
