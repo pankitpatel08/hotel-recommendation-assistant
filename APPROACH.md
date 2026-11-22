@@ -152,7 +152,7 @@ Added Screenshots in the folder `Testing_Screenshots`
 
 - I think covered all the cases
 
-## 12. Time spent
+## 10. Time spent
 
 | Step                                  | Actual  |
 | ------------------------------------- | ------- |
