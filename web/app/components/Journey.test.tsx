@@ -168,6 +168,59 @@ describe("results", () => {
     expect(third.getByText("Breakfast not included")).toBeInTheDocument();
   });
 
+  // message input + trimming (request form)
+  it("sends what the traveller typed, trimmed of surrounding whitespace", async () => {
+    fetchMock.mockResolvedValueOnce(reply(SUCCESS_BODY));
+    const user = setup();
+    const input = screen.getByLabelText("Hotel request");
+    await user.clear(input);
+    await user.type(input, "  Two nights in Wellington, near the harbour  ");
+    expect(input).toHaveValue("  Two nights in Wellington, near the harbour  ");
+    await clickSearch(user);
+    await screen.findAllByRole("article");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).message).toBe(
+      "Two nights in Wellington, near the harbour",
+    );
+  });
+
+  // validation message clears (request form)
+  it("clears the validation message once the traveller types again", async () => {
+    const user = setup();
+    const input = screen.getByLabelText("Hotel request");
+    await user.clear(input);
+    await clickSearch(user);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    await user.type(input, "Wellington");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(input).not.toHaveAttribute("aria-invalid");
+  });
+
+  // all three cards, every field (results)
+  it("renders all three hotels with name, price, currency, breakfast and explanation", async () => {
+    const user = setup();
+    const cards = await searchAndWaitForCards(user);
+    expect(cards).toHaveLength(3);
+    HOTELS.forEach((hotel, index) => {
+      const card = within(cards[index]);
+      expect(
+        card.getByRole("heading", { name: hotel.name }),
+      ).toBeInTheDocument();
+      expect(
+        card.getByText(
+          new RegExp(`${hotel.currency}\\s*${hotel.nightlyPrice}\\b`),
+        ),
+      ).toBeInTheDocument();
+      expect(
+        card.getByText(
+          hotel.breakfastIncluded
+            ? "Breakfast included"
+            : "Breakfast not included",
+        ),
+      ).toBeInTheDocument();
+      expect(card.getByText(hotel.explanation)).toBeInTheDocument();
+    });
+  });
+
   it("shows the empty state and keeps the form editable for the empty scenario", async () => {
     fetchMock.mockResolvedValueOnce(reply(EMPTY_BODY));
     const user = setup();
